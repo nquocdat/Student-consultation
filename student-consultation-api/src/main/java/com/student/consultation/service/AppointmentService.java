@@ -19,9 +19,11 @@ public interface AppointmentService {
 
     List<AppointmentResponseDTO> getAppointmentsByStudent(Long studentId);
 
-    List<AppointmentResponseDTO> getAppointmentsByLecturer(Long lecturerId);
+    List<AppointmentResponseDTO> getAppointmentsForLecturer(Long lecturerUserId);
+
 
     List<AppointmentResponseDTO> getAppointmentsByStatus(Status status);
 
     List<AppointmentResponseDTO> getAllAppointments();
+
 }

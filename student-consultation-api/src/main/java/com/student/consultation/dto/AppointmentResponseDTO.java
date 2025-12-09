@@ -1,6 +1,7 @@
 package com.student.consultation.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.student.consultation.entity.Appointment;
 import com.student.consultation.entity.Status;
 import lombok.Builder;
 import lombok.Data;
@@ -22,4 +23,16 @@ public class AppointmentResponseDTO {
 
     private Status status;
     private String reason;
+    public static AppointmentResponseDTO fromEntity(Appointment a) {
+        return AppointmentResponseDTO.builder()
+                .id(a.getId())
+                .studentId(a.getStudent().getId())
+                .lecturerId(a.getLecturer().getId())
+                .date(a.getDate())
+                .time(a.getTime())
+                .reason(a.getReason())
+                .status(a.getStatus())
+                .build();
+    }
+
 }

@@ -3,9 +3,7 @@ package com.student.consultation.service.impl;
 import com.student.consultation.dto.AppointmentRequestDTO;
 import com.student.consultation.dto.AppointmentResponseDTO;
 import com.student.consultation.dto.AppointmentUpdateDTO;
-import com.student.consultation.entity.Appointment;
-import com.student.consultation.entity.AppointmentStatus;
-import com.student.consultation.entity.Status;
+import com.student.consultation.entity.*;
 import com.student.consultation.mapper.AppointmentMapper;
 import com.student.consultation.repository.AppointmentRepository;
 import com.student.consultation.repository.LecturerRepository;
@@ -21,6 +19,7 @@ import com.student.consultation.security.SecurityUtil;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -105,21 +104,37 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .orElseThrow(() -> new RuntimeException("Not found"));
     }
 
+    // lấy danh sách lịch hẹn của sinh viên
     @Override
-    public List<AppointmentResponseDTO> getAppointmentsByStudent(Long studentId) {
-        return appointmentRepository.findByStudentId(studentId)
-                .stream()
-                .map(AppointmentMapper::toDTO)
+    public List<AppointmentResponseDTO> getAppointmentsByStudent(Long studentUserId) {
+
+        // Lấy student theo user_id
+        Student student = studentRepository.findByUserId(studentUserId)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
+
+        List<Appointment> appointments = appointmentRepository.findByStudent_Id(student.getId());
+
+        return appointments.stream()
+                .map(AppointmentResponseDTO::fromEntity)
                 .toList();
     }
 
+
     @Override
-    public List<AppointmentResponseDTO> getAppointmentsByLecturer(Long lecturerId) {
-        return appointmentRepository.findByLecturerId(lecturerId)
+    public List<AppointmentResponseDTO> getAppointmentsForLecturer(Long lecturerUserId) {
+
+        Lecturer lecturer = lecturerRepository.findByUserId(lecturerUserId)
+                .orElseThrow(() -> new RuntimeException("Lecturer not found"));
+
+        Long lecturerId = lecturer.getId();
+
+        return appointmentRepository.findByLecturer_Id(lecturerId)
                 .stream()
                 .map(AppointmentMapper::toDTO)
-                .toList();
+                .collect(Collectors.toList());
     }
+
+
 
     @Override
     public List<AppointmentResponseDTO> getAppointmentsByStatus(Status status) {

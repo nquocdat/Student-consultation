@@ -15,4 +15,9 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findByStatus(Status status);
 
     boolean existsByStudent_IdAndDateAndTime(Long studentId, LocalDate date, LocalTime time);
+    // lấy sanh sách lịch hẹn của sinh viên
+    List<Appointment> findByStudent_Id(Long studentId);
+    List<Appointment> findByLecturer_Id(Long lecturerId);
+
+
 }

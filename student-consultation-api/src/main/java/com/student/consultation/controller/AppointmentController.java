@@ -59,15 +59,15 @@ public class AppointmentController {
         return ResponseEntity.ok(appointmentService.getAppointmentById(id));
     }
 
-    @GetMapping("/student/{studentId}")
-    public ResponseEntity<List<AppointmentResponseDTO>> getByStudent(@PathVariable Long studentId) {
-        return ResponseEntity.ok(appointmentService.getAppointmentsByStudent(studentId));
-    }
+//    @GetMapping("/student/{studentId}")
+//    public ResponseEntity<List<AppointmentResponseDTO>> getByStudent(@PathVariable Long studentId) {
+//        return ResponseEntity.ok(appointmentService.getAppointmentsByStudent(studentId));
+//    }
 
-    @GetMapping("/lecturer/{lecturerId}")
-    public ResponseEntity<List<AppointmentResponseDTO>> getByLecturer(@PathVariable Long lecturerId) {
-        return ResponseEntity.ok(appointmentService.getAppointmentsByLecturer(lecturerId));
-    }
+//    @GetMapping("/lecturer/{lecturerId}")
+//    public ResponseEntity<List<AppointmentResponseDTO>> getByLecturer(@PathVariable Long lecturerId) {
+//        return ResponseEntity.ok(appointmentService.getAppointmentsByLecturer(lecturerId));
+//    }
 
     @GetMapping("/status/{status}")
     public ResponseEntity<List<AppointmentResponseDTO>> getByStatus(@PathVariable Status status) {
@@ -84,4 +84,29 @@ public class AppointmentController {
         appointmentService.deleteAppointment(id);
         return ResponseEntity.ok("Deleted");
     }
+    // lấy danh sachs lịch hẹn của sinh viên
+    @GetMapping("/my")
+    public ResponseEntity<?> getMyAppointments(@AuthenticationPrincipal CustomUserDetails user) {
+
+        Long studentUserId = user.getUserId();  // Lấy user_id trong bảng users
+
+        List<AppointmentResponseDTO> list = appointmentService.getAppointmentsByStudent(studentUserId);
+
+        return ResponseEntity.ok(list);
+    }
+    // lecturer xem danh sách sinh viên đã đặt
+    @GetMapping("/lecturer/my")
+    public ResponseEntity<List<AppointmentResponseDTO>> getLecturerAppointments(
+            @AuthenticationPrincipal CustomUserDetails user
+    ) {
+        Long lecturerUserId = user.getUserId();
+
+        List<AppointmentResponseDTO> list =
+                appointmentService.getAppointmentsForLecturer(lecturerUserId);
+
+        return ResponseEntity.ok(list);
+    }
+
+
+
 }
