@@ -71,19 +71,24 @@ public class AppointmentServiceImpl implements AppointmentService {
         return AppointmentMapper.toDTO(appointment);
     }
 
-
-
-
     @Override
     public AppointmentResponseDTO updateAppointment(Long id, AppointmentUpdateDTO dto) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Appointment not found"));
 
-        if (dto.getDate() != null)
-            appointment.setDate(LocalDate.parse(dto.getDate()));
+//        if (dto.getDate() != null)
+//            appointment.setDate(LocalDate.parse(dto.getDate()));
+//
+//        if (dto.getTime() != null)
+//            appointment.setTime(LocalTime.parse(dto.getTime()));
+        if (dto.getDate() != null) {
+            appointment.setDate(dto.getDate());
+        }
 
-        if (dto.getTime() != null)
-            appointment.setTime(LocalTime.parse(dto.getTime()));
+        if (dto.getTime() != null) {
+            appointment.setTime(dto.getTime());
+        }
+
 
         if (dto.getReason() != null) appointment.setReason(dto.getReason());
         if (dto.getStatus() != null) appointment.setStatus(dto.getStatus());
@@ -151,5 +156,190 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .map(AppointmentMapper::toDTO)
                 .toList();
     }
+
+    @Override
+    public AppointmentResponseDTO lecturerUpdateStatus(
+            Long appointmentId,
+            Long lecturerUserId,
+            AppointmentUpdateDTO dto
+    ) {
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("Appointment not found"));
+
+        Lecturer lecturer = lecturerRepository.findByUserId(lecturerUserId)
+                .orElseThrow(() -> new RuntimeException("Lecturer not found"));
+
+        if (!appointment.getLecturer().getId().equals(lecturer.getId())) {
+            throw new RuntimeException("You are not allowed to update this appointment");
+        }
+
+        Status current = appointment.getStatus();
+        Status next = dto.getStatus();
+
+        // 🔥 RULE 1: Completed và Cancelled thì không sửa nữa
+        if (current == Status.COMPLETED || current == Status.CANCELLED) {
+            throw new RuntimeException("This appointment can no longer be modified");
+        }
+
+        // 🔥 RULE 2: PENDING → cho phép APPROVED / REJECTED / CANCELLED
+        if (current == Status.PENDING) {
+            if (!(next == Status.APPROVED ||
+                    next == Status.REJECTED ||
+                    next == Status.CANCELLED)) {
+                throw new RuntimeException("Invalid transition from PENDING");
+            }
+        }
+
+        // 🔥 RULE 3: APPROVED → giảng viên chỉ được CANCELLED hoặc COMPLETED
+        if (current == Status.APPROVED) {
+            if (!(next == Status.CANCELLED || next == Status.COMPLETED)) {
+                throw new RuntimeException("Approved appointment can only be cancelled or completed");
+            }
+        }
+
+        // 🔥 RULE 4: CANCEL_REQUEST → Giảng viên quyết định APPROVED hoặc CANCELLED
+        if (current == Status.CANCEL_REQUEST) {
+            if (!(next == Status.APPROVED || next == Status.CANCELLED)) {
+                throw new RuntimeException("Lecturer must choose APPROVED or CANCELLED for cancel request");
+            }
+        }
+
+        // Ghi chú của giảng viên nếu có
+        if (dto.getReason() != null) {
+            appointment.setReason(dto.getReason());
+        }
+
+
+        appointment.setStatus(next);
+        appointmentRepository.save(appointment);
+
+        return AppointmentMapper.toDTO(appointment);
+    }
+
+    // student hủy lịch khi đã được phê duyệt
+
+    @Override
+    public void cancelByStudent(Long appointmentId, Long studentUserId) {
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("Appointment not found"));
+
+        Student student = studentRepository.findByUserId(studentUserId)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
+
+        // Kiểm tra đúng sinh viên
+        if (!appointment.getStudent().getId().equals(student.getId())) {
+            throw new RuntimeException("You are not allowed to cancel this appointment");
+        }
+
+        Status currentStatus = appointment.getStatus();
+
+        // Không cho hủy khi đã hoàn thành
+        if (currentStatus == Status.COMPLETED) {
+            throw new RuntimeException("Cannot cancel a completed appointment");
+        }
+
+        // Không cho hủy nếu đã bị từ chối
+        if (currentStatus == Status.REJECTED) {
+            throw new RuntimeException("Appointment was already rejected");
+        }
+
+        // Nếu đang PENDING → hủy luôn
+        if (currentStatus == Status.PENDING) {
+            appointment.setStatus(Status.CANCELLED);
+        }
+        // Nếu đã APPROVED → gửi yêu cầu hủy
+        else if (currentStatus == Status.APPROVED) {
+            appointment.setStatus(Status.CANCEL_REQUEST);
+        }
+        // Các trạng thái khác
+        else {
+            throw new RuntimeException("Appointment cannot be cancelled in current status");
+        }
+
+        appointmentRepository.save(appointment);
+    }
+
+
+    // lecturer chủ động hủy lịch
+    @Override
+    public void cancelByLecturer(Long appointmentId, Long lecturerUserId) {
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("Appointment not found"));
+
+        Lecturer lecturer = lecturerRepository.findByUserId(lecturerUserId)
+                .orElseThrow(() -> new RuntimeException("Lecturer not found"));
+
+        if (!appointment.getLecturer().getId().equals(lecturer.getId())) {
+            throw new RuntimeException("You are not allowed to cancel this appointment");
+        }
+
+        Status status = appointment.getStatus();
+
+        if (status == Status.COMPLETED) {
+            throw new RuntimeException("Cannot cancel a completed appointment");
+        }
+
+        if (status == Status.REJECTED || status == Status.CANCELLED) {
+            throw new RuntimeException("Appointment already ended");
+        }
+
+        // Giảng viên chỉ được chủ động hủy khi PENDING
+        if (status != Status.PENDING) {
+            throw new RuntimeException("Lecturer can only cancel pending appointments directly");
+        }
+
+        appointment.setStatus(Status.CANCELLED);
+        appointmentRepository.save(appointment);
+    }
+
+    // lecturere chấp nhận yêu cầu hủy lịch
+    @Override
+    public void approveCancelRequest(Long appointmentId, Long lecturerUserId) {
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("Appointment not found"));
+
+        Lecturer lecturer = lecturerRepository.findByUserId(lecturerUserId)
+                .orElseThrow(() -> new RuntimeException("Lecturer not found"));
+
+        if (!appointment.getLecturer().getId().equals(lecturer.getId())) {
+            throw new RuntimeException("You are not allowed");
+        }
+
+        if (appointment.getStatus() != Status.CANCEL_REQUEST) {
+            throw new RuntimeException("No cancel request to approve");
+        }
+
+        appointment.setStatus(Status.CANCELLED);
+        appointmentRepository.save(appointment);
+    }
+    // lecturer từ chối yêu cầu hủy lịch
+    @Override
+    public void rejectCancelRequest(Long appointmentId, Long lecturerUserId) {
+
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("Appointment not found"));
+
+        Lecturer lecturer = lecturerRepository.findByUserId(lecturerUserId)
+                .orElseThrow(() -> new RuntimeException("Lecturer not found"));
+
+        if (!appointment.getLecturer().getId().equals(lecturer.getId())) {
+            throw new RuntimeException("You are not allowed");
+        }
+
+        if (appointment.getStatus() != Status.CANCEL_REQUEST) {
+            throw new RuntimeException("No cancel request to reject");
+        }
+
+        appointment.setStatus(Status.APPROVED);
+        appointmentRepository.save(appointment);
+    }
+
+
+
+
 }
 

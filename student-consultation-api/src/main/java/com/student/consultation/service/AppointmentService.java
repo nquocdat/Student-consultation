@@ -25,5 +25,16 @@ public interface AppointmentService {
     List<AppointmentResponseDTO> getAppointmentsByStatus(Status status);
 
     List<AppointmentResponseDTO> getAllAppointments();
+    public AppointmentResponseDTO lecturerUpdateStatus(Long appointmentId, Long lecturerUserId, AppointmentUpdateDTO dto);
+
+    // Sinh viên hủy lịch
+    void cancelByStudent(Long appointmentId, Long studentId);
+
+    // Giảng viên hủy lịch
+    void cancelByLecturer(Long appointmentId, Long lecturerId);
+    void approveCancelRequest(Long appointmentId, Long lecturerUserId);
+    void rejectCancelRequest(Long appointmentId, Long lecturerUserId);
+
+
 
 }

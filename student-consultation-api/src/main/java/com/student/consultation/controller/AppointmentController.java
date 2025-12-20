@@ -16,6 +16,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/appointment")
@@ -84,6 +85,7 @@ public class AppointmentController {
         appointmentService.deleteAppointment(id);
         return ResponseEntity.ok("Deleted");
     }
+
     // lấy danh sachs lịch hẹn của sinh viên
     @GetMapping("/my")
     public ResponseEntity<?> getMyAppointments(@AuthenticationPrincipal CustomUserDetails user) {
@@ -106,6 +108,79 @@ public class AppointmentController {
 
         return ResponseEntity.ok(list);
     }
+    // lecturer update appointment
+    @PutMapping("/lecturer/update/{id}")
+    public ResponseEntity<AppointmentResponseDTO> lecturerUpdateStatus(
+            @PathVariable Long id,
+            @RequestBody AppointmentUpdateDTO dto,
+            @AuthenticationPrincipal CustomUserDetails user
+    ) {
+        Long lecturerUserId = user.getUserId();
+        AppointmentResponseDTO updated =
+                appointmentService.lecturerUpdateStatus(id, lecturerUserId, dto);
+
+        return ResponseEntity.ok(updated);
+    }
+
+    // student request cancel appointment
+    @PutMapping("/{id}/cancel/student")
+    public ResponseEntity<?> cancelByStudent(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails user
+    ) {
+        Long studentUserId = user.getUserId(); // user_id từ JWT
+
+        appointmentService.cancelByStudent(id, studentUserId);
+
+        return ResponseEntity.ok(
+                Map.of("message", "Student cancelled appointment successfully")
+        );
+    }
+
+
+    // api giảng viên chủ động hủy lịch
+    @PutMapping("/{id}/cancel/lecturer")
+    public ResponseEntity<?> cancelByLecturer(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails user
+    ) {
+        Long lecturerUserId = user.getUserId(); // user_id từ JWT
+        appointmentService.cancelByLecturer(id, lecturerUserId);
+
+        return ResponseEntity.ok(
+                Map.of("message", "Appointment cancelled successfully by lecturer")
+        );
+    }
+    // giảng viên chấp nhận yêu cầu hủy lịch
+    @PutMapping("/{id}/cancel-request/approve")
+    public ResponseEntity<?> approveCancelRequest(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails user
+    ) {
+        Long lecturerUserId = user.getUserId();
+
+        appointmentService.approveCancelRequest(id, lecturerUserId);
+
+        return ResponseEntity.ok(
+                Map.of("message", "Cancel request approved")
+        );
+    }
+    // giảng viên từ chối yêu cầu hủy lịch
+    @PutMapping("/{id}/cancel-request/reject")
+    public ResponseEntity<?> rejectCancelRequest(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails user
+    ) {
+        Long lecturerUserId = user.getUserId();
+
+        appointmentService.rejectCancelRequest(id, lecturerUserId);
+
+        return ResponseEntity.ok(
+                Map.of("message", "Cancel request rejected")
+        );
+    }
+
+
 
 
 
